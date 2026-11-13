@@ -35,21 +35,19 @@
   #mapContainer {
     width: 100%; height: 220px; border-radius: 16px; overflow: hidden;
     margin-bottom: 16px; border: 1px solid #333;
+    background: #1a1a1a; display: flex; align-items: center; justify-content: center;
+    color: #666; font-size: 0.9rem;
   }
 
   /* Pulsing destination marker */
-  .pulse-marker {
-    width: 20px; height: 20px; position: relative; cursor: pointer;
-  }
+  .pulse-marker { width: 20px; height: 20px; position: relative; }
   .pulse-marker .dot {
     width: 16px; height: 16px; background: #e50914; border-radius: 50%;
-    position: absolute; top: 2px; left: 2px;
-    box-shadow: 0 0 10px rgba(229,9,20,0.9);
+    position: absolute; top: 2px; left: 2px; box-shadow: 0 0 10px rgba(229,9,20,0.9);
   }
   .pulse-marker .ring {
     width: 20px; height: 20px; border: 2px solid #e50914; border-radius: 50%;
-    position: absolute; top: 0; left: 0;
-    animation: pulse 2s ease-out infinite;
+    position: absolute; top: 0; left: 0; animation: pulse 2s ease-out infinite;
   }
   .pulse-marker .ring:nth-child(3) { animation-delay: 1s; }
   @keyframes pulse {
@@ -71,8 +69,7 @@
   /* Full steps list */
   #stepsToggle {
     background: none; border: none; color: #888; font-size: 0.8rem;
-    cursor: pointer; margin-bottom: 14px; text-decoration: underline;
-    padding: 0;
+    cursor: pointer; margin-bottom: 14px; text-decoration: underline; padding: 0;
   }
   #stepsList {
     display: none; width: 100%; text-align: left; margin-bottom: 14px;
@@ -89,26 +86,26 @@
   #stepsList .step.current { color: #fff; font-weight: 600; background: rgba(229,9,20,0.1); }
 
   .compass-ring {
-    width: min(55vw, 200px); height: min(55vw, 200px);
+    width: min(65vw, 240px); height: min(65vw, 240px);
     border-radius: 50%; border: 2px solid #333;
     position: relative; display: flex; align-items: center; justify-content: center;
     margin-bottom: 14px; background: radial-gradient(circle, #1a1a1a 0%, #0a0a0a 100%);
     flex-shrink: 0;
   }
-  .compass-ring::before, .compass-ring::after {
-    content: ''; position: absolute; background: #333;
-  }
+  .compass-ring::before, .compass-ring::after { content: ''; position: absolute; background: #333; }
   .compass-ring::before { width: 1px; height: 100%; }
   .compass-ring::after { width: 100%; height: 1px; }
 
-  #arrow {
-    font-size: min(22vw, 90px); line-height: 1;
+  /* SVG Arrow Styling */
+  #arrowContainer {
+    width: 80px; height: 120px;
     transition: transform 0.25s ease-out;
     filter: drop-shadow(0 0 20px rgba(229,9,20,0.7));
-    z-index: 2; user-select: none;
+    z-index: 2;
   }
+  #arrowContainer svg { width: 100%; height: 100%; display: block; }
 
-  #distance { font-size: 1.4rem; font-weight: 700; margin-bottom: 2px; }
+  #distance { font-size: 1.6rem; font-weight: 700; margin-bottom: 2px; }
   #distanceLabel { color: #888; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 2px; }
   #status { margin-top: 10px; color: #666; font-size: 0.75rem; max-width: 320px; }
   #arrived { display: none; font-size: 1.4rem; color: #4ade80; font-weight: 700; margin-top: 10px; }
@@ -129,7 +126,7 @@
 </div>
 
 <div id="compassView">
-  <div id="mapContainer"></div>
+  <div id="mapContainer">Loading map...</div>
 
   <div id="instruction">
     <div><span id="instructionIcon">➡️</span><span id="instructionText">Loading route…</span></div>
@@ -138,7 +135,15 @@
   <button id="stepsToggle">Show all steps ▾</button>
   <div id="stepsList"></div>
 
-  <div class="compass-ring"><div id="arrow">⬆️</div></div>
+  <div class="compass-ring">
+    <!-- Replaced emoji with a proper SVG arrow -->
+    <div id="arrowContainer">
+      <svg viewBox="0 0 100 140" xmlns="http://www.w3.org/2000/svg">
+        <polygon points="50,0 100,80 50,60 0,80" fill="#e50914" />
+        <rect x="35" y="60" width="30" height="80" fill="#e50914" />
+      </svg>
+    </div>
+  </div>
   <div id="distance">--</div>
   <div id="distanceLabel">meters away</div>
   <div id="arrived">🎬 You've arrived!</div>
@@ -154,9 +159,11 @@
 // ============================================================
 // CONFIG — REPLACE WITH YOUR OWN VALUES
 // ============================================================
-const MAPBOX_TOKEN = 'pk.eyJ1IjoiZ2lsYmVydGF0dW1hNSIsImEiOiJjbXdmNjRjMDcwNWUyMnhzNHMxOW5taXhqIn0.DuX3hwuBWjtWks7nHtObsw';
-const TARGET = { lat: 3.0303407, lng: 30.9073000 };const ARRIVAL_RADIUS = 15;
-const STEP_ADVANCE_RADIUS = 20; // meters — how close before advancing to next step
+// Make sure your Mapbox token starts with "pk." and doesn't have spaces!
+const MAPBOX_TOKEN = 'pk.eyJ1IjoiZ2lsYmVydGF0dW1hNSIsImEiOiJjbXdmNjRjMDcwNWUyMnhzNHMxOW5taXhqIn0.DuX3hwuBWjtWks7nHtObsw'; 
+const TARGET = { lat: 3.0303407, lng: 30.9073000 }; // Tarantino, Arua
+const ARRIVAL_RADIUS = 15;
+const STEP_ADVANCE_RADIUS = 20;
 // ============================================================
 
 mapboxgl.accessToken = MAPBOX_TOKEN;
@@ -164,7 +171,8 @@ mapboxgl.accessToken = MAPBOX_TOKEN;
 const introView   = document.getElementById('introView');
 const compassView = document.getElementById('compassView');
 const directBtn   = document.getElementById('directBtn');
-const arrow       = document.getElementById('arrow');
+const arrow       = document.getElementById('arrowContainer');
+const mapDiv      = document.getElementById('mapContainer');
 const distanceEl  = document.getElementById('distance');
 const statusEl    = document.getElementById('status');
 const arrivedEl   = document.getElementById('arrived');
@@ -179,8 +187,8 @@ const stepsList   = document.getElementById('stepsList');
 let map = null, mapLoaded = false, watchId = null;
 let heading = null, currentPos = null;
 let routeDrawn = false, lastRouteOrigin = null;
-let steps = [];            // parsed steps
-let currentStepIndex = 0;  // index into steps
+let steps = [];            
+let currentStepIndex = 0;  
 
 function toRad(d) { return d * Math.PI / 180; }
 function toDeg(r) { return r * 180 / Math.PI; }
@@ -200,7 +208,6 @@ function bearing(lat1, lng1, lat2, lng2) {
   return (toDeg(Math.atan2(y, x)) + 360) % 360;
 }
 
-// Map maneuver modifier/type → emoji icon
 function maneuverIcon(step) {
   const t = step.maneuver.type;
   const m = step.maneuver.modifier || '';
@@ -229,7 +236,6 @@ function updateArrow() {
   if (dist <= ARRIVAL_RADIUS) {
     arrivedEl.classList.add('active');
     arrow.style.transform = 'rotate(0deg) scale(1.2)';
-    arrow.textContent = '🎬';
     return;
   }
   arrivedEl.classList.remove('active');
@@ -242,12 +248,8 @@ function updateArrow() {
     : 'Compass unavailable — arrow points from North.';
 }
 
-// Find the closest step to current position and highlight it
 function updateCurrentStep() {
   if (!currentPos || steps.length === 0) return;
-
-  // Find first step whose maneuver location is within STEP_ADVANCE_RADIUS
-  // of our current position, starting from currentStepIndex
   for (let i = currentStepIndex; i < steps.length; i++) {
     const s = steps[i];
     const [lng, lat] = s.maneuver.location;
@@ -256,7 +258,6 @@ function updateCurrentStep() {
       currentStepIndex = Math.min(i + 1, steps.length - 1);
     }
   }
-
   renderInstruction();
   renderStepsList();
 }
@@ -267,12 +268,8 @@ function renderInstruction() {
   instructionEl.classList.add('active');
   instructionIcon.textContent = maneuverIcon(s);
   instructionText.textContent = s.maneuver.instruction;
-
-  // Distance from current position to this step's maneuver point
   const [lng, lat] = s.maneuver.location;
-  const d = currentPos
-    ? distanceMeters(currentPos.latitude, currentPos.longitude, lat, lng)
-    : s.distance;
+  const d = currentPos ? distanceMeters(currentPos.latitude, currentPos.longitude, lat, lng) : s.distance;
   instructionDist.textContent = `${fmtDist(d)} until this step`;
 }
 
@@ -295,11 +292,10 @@ stepsToggle.addEventListener('click', () => {
 });
 
 async function fetchWalkingRoute() {
-  if (!currentPos || !mapLoaded) return;
+  if (!currentPos || !mapLoaded || MAPBOX_TOKEN === 'YOUR_MAPBOX_TOKEN_HERE') return;
 
   if (lastRouteOrigin) {
-    const moved = distanceMeters(lastRouteOrigin.lat, lastRouteOrigin.lng,
-                                  currentPos.latitude, currentPos.longitude);
+    const moved = distanceMeters(lastRouteOrigin.lat, lastRouteOrigin.lng, currentPos.latitude, currentPos.longitude);
     if (moved < 30) return;
   }
 
@@ -315,26 +311,15 @@ async function fetchWalkingRoute() {
     const route = data.routes[0];
     const coords = route.geometry.coordinates;
 
-    // Parse steps
     steps = (route.legs[0].steps || []).map(s => ({
-      distance: s.distance,
-      duration: s.duration,
-      maneuver: {
-        type: s.maneuver.type,
-        modifier: s.maneuver.modifier,
-        location: s.maneuver.location,
-        instruction: s.maneuver.instruction
-      }
+      distance: s.distance, duration: s.duration,
+      maneuver: { type: s.maneuver.type, modifier: s.maneuver.modifier, location: s.maneuver.location, instruction: s.maneuver.instruction }
     }));
 
-    // Reset step tracker when route changes
-    if (!routeDrawn || !lastRouteOrigin ||
-        distanceMeters(lastRouteOrigin.lat, lastRouteOrigin.lng,
-                       currentPos.latitude, currentPos.longitude) > 100) {
+    if (!routeDrawn || !lastRouteOrigin || distanceMeters(lastRouteOrigin.lat, lastRouteOrigin.lng, currentPos.latitude, currentPos.longitude) > 100) {
       currentStepIndex = 0;
     }
 
-    // Draw route
     if (map.getSource('route')) {
       map.removeLayer('route');
       map.removeSource('route');
@@ -364,28 +349,41 @@ async function fetchWalkingRoute() {
 }
 
 function initMap() {
-  map = new mapboxgl.Map({
-    container: 'mapContainer',
-    style: 'mapbox://styles/mapbox/dark-v11',
-    center: [TARGET.lng, TARGET.lat],
-    zoom: 12,
-    interactive: false
-  });
+  if (MAPBOX_TOKEN === 'YOUR_MAPBOX_TOKEN_HERE') {
+    mapDiv.textContent = "⚠️ Mapbox Token missing. Map disabled.";
+    return; // Skip map init if token is missing
+  }
 
-  map.on('load', () => {
-    mapLoaded = true;
+  try {
+    map = new mapboxgl.Map({
+      container: 'mapContainer',
+      style: 'mapbox://styles/mapbox/dark-v11',
+      center: [TARGET.lng, TARGET.lat],
+      zoom: 12,
+      interactive: false
+    });
 
-    // Pulsing destination marker
-    const pulseEl = document.createElement('div');
-    pulseEl.className = 'pulse-marker';
-    pulseEl.innerHTML = '<div class="ring"></div><div class="ring"></div><div class="dot"></div>';
+    map.on('load', () => {
+      mapDiv.innerHTML = ''; // Clear "Loading map..."
+      mapLoaded = true;
 
-    new mapboxgl.Marker({ element: pulseEl, anchor: 'center' })
-      .setLngLat([TARGET.lng, TARGET.lat])
-      .addTo(map);
+      const pulseEl = document.createElement('div');
+      pulseEl.className = 'pulse-marker';
+      pulseEl.innerHTML = '<div class="ring"></div><div class="ring"></div><div class="dot"></div>';
 
-    fetchWalkingRoute();
-  });
+      new mapboxgl.Marker({ element: pulseEl, anchor: 'center' })
+        .setLngLat([TARGET.lng, TARGET.lat])
+        .addTo(map);
+
+      fetchWalkingRoute();
+    });
+    
+    map.on('error', (e) => {
+       mapDiv.textContent = "⚠️ Mapbox Error: Check your token or internet connection.";
+    });
+  } catch(e) {
+    mapDiv.textContent = "⚠️ Map failed to load.";
+  }
 }
 
 function onPosition(pos) {
@@ -405,7 +403,12 @@ function onPosition(pos) {
   }
 }
 
-function onError(err) { statusEl.textContent = 'Location error: ' + err.message; }
+function onError(err) { 
+  statusEl.textContent = 'Location error: ' + err.message; 
+  if (err.code === 1) {
+     alert("Please allow location access in your browser settings.");
+  }
+}
 
 function onHeading(e) {
   if (e.webkitCompassHeading !== undefined && e.webkitCompassHeading !== null) {
