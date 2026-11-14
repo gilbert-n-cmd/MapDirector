@@ -36,11 +36,11 @@
     width: 100%; height: 220px; border-radius: 16px; overflow: hidden;
     margin-bottom: 16px; border: 1px solid #333;
     background: #1a1a1a; display: flex; align-items: center; justify-content: center;
-    color: #666; font-size: 0.9rem;
+    color: #666; font-size: 0.9rem; padding: 20px; line-height: 1.4;
   }
 
   /* Pulsing destination marker */
-  .pulse-marker { width: 20px; height: 20px; position: relative; }
+  .pulse-marker { width: 20px; height: 20px; position: relative; cursor: pointer; }
   .pulse-marker .dot {
     width: 16px; height: 16px; background: #e50914; border-radius: 50%;
     position: absolute; top: 2px; left: 2px; box-shadow: 0 0 10px rgba(229,9,20,0.9);
@@ -107,7 +107,14 @@
 
   #distance { font-size: 1.6rem; font-weight: 700; margin-bottom: 2px; }
   #distanceLabel { color: #888; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 2px; }
+  
   #status { margin-top: 10px; color: #666; font-size: 0.75rem; max-width: 320px; }
+  #recalibrateBtn {
+    background: none; border: none; color: #e50914; font-size: 0.75rem; 
+    text-decoration: underline; margin-top: 8px; cursor: pointer; display: none;
+  }
+  #recalibrateBtn.active { display: inline-block; }
+
   #arrived { display: none; font-size: 1.4rem; color: #4ade80; font-weight: 700; margin-top: 10px; }
   #arrived.active { display: block; }
 
@@ -136,7 +143,6 @@
   <div id="stepsList"></div>
 
   <div class="compass-ring">
-    <!-- Replaced emoji with a proper SVG arrow -->
     <div id="arrowContainer">
       <svg viewBox="0 0 100 140" xmlns="http://www.w3.org/2000/svg">
         <polygon points="50,0 100,80 50,60 0,80" fill="#e50914" />
@@ -147,23 +153,24 @@
   <div id="distance">--</div>
   <div id="distanceLabel">meters away</div>
   <div id="arrived">🎬 You've arrived!</div>
+  
   <p id="status">Move your device to update direction.</p>
-</div>
+  <button id="recalibrateBtn">🔄 Tap to fix compass</button>
 
-<div id="shareSection">
-  <div id="qrcode"></div>
-  <p id="shareLabel">Scan to share this page</p>
+  <div id="shareSection">
+    <div id="qrcode"></div>
+    <p id="shareLabel">Scan to share this page</p>
+  </div>
 </div>
 
 <script>
 // ============================================================
-// CONFIG — REPLACE WITH YOUR OWN VALUES
+// CONFIG
 // ============================================================
-// Make sure your Mapbox token starts with "pk." and doesn't have spaces!
 const MAPBOX_TOKEN = 'pk.eyJ1IjoiZ2lsYmVydGF0dW1hNSIsImEiOiJjbXdmNjRjMDcwNWUyMnhzNHMxOW5taXhqIn0.DuX3hwuBWjtWks7nHtObsw'; 
 const TARGET = { lat: 3.0303407, lng: 30.9073000 }; // Tarantino, Arua
 const ARRIVAL_RADIUS = 15;
-const STEP_ADVANCE_RADIUS = 20;
+const STEP_ADVANCE_RADIUS = 20; 
 // ============================================================
 
 mapboxgl.accessToken = MAPBOX_TOKEN;
@@ -183,6 +190,7 @@ const instructionText    = document.getElementById('instructionText');
 const instructionDist    = document.getElementById('instructionDist');
 const stepsToggle = document.getElementById('stepsToggle');
 const stepsList   = document.getElementById('stepsList');
+const recalibrateBtn = document.getElementById('recalibrateBtn');
 
 let map = null, mapLoaded = false, watchId = null;
 let heading = null, currentPos = null;
@@ -241,11 +249,18 @@ function updateArrow() {
   arrivedEl.classList.remove('active');
 
   const targetBearing = bearing(currentPos.latitude, currentPos.longitude, TARGET.lat, TARGET.lng);
-  const rotation = heading !== null ? (targetBearing - heading + 360) % 360 : targetBearing;
-  arrow.style.transform = `rotate(${rotation}deg)`;
-  statusEl.textContent = heading !== null
-    ? 'Arrow points toward Tarantino relative to your facing direction.'
-    : 'Compass unavailable — arrow points from North.';
+  
+  if (heading !== null) {
+    const rotation = (targetBearing - heading + 360) % 360;
+    arrow.style.transform = `rotate(${rotation}deg)`;
+    statusEl.textContent = 'Arrow points toward Tarantino relative to your facing direction.';
+    recalibrateBtn.classList.remove('active');
+  } else {
+    // Fallback: point to True North Bearing
+    arrow.style.transform = `rotate(${targetBearing}deg)`;
+    statusEl.textContent = 'Compass unavailable — arrow points from North.';
+    recalibrateBtn.classList.add('active');
+  }
 }
 
 function updateCurrentStep() {
@@ -292,7 +307,7 @@ stepsToggle.addEventListener('click', () => {
 });
 
 async function fetchWalkingRoute() {
-  if (!currentPos || !mapLoaded || MAPBOX_TOKEN === 'YOUR_MAPBOX_TOKEN_HERE') return;
+  if (!currentPos || !mapLoaded) return;
 
   if (lastRouteOrigin) {
     const moved = distanceMeters(lastRouteOrigin.lat, lastRouteOrigin.lng, currentPos.latitude, currentPos.longitude);
@@ -349,9 +364,10 @@ async function fetchWalkingRoute() {
 }
 
 function initMap() {
-  if (MAPBOX_TOKEN === 'YOUR_MAPBOX_TOKEN_HERE') {
-    mapDiv.textContent = "⚠️ Mapbox Token missing. Map disabled.";
-    return; // Skip map init if token is missing
+  // CHECK FOR WEBGL2 SUPPORT
+  if (!mapboxgl.supported()) {
+    mapDiv.innerHTML = "⚠️ <b>Map not supported.</b><br>Your browser or phone doesn't support the graphics required to show the map. The compass above still works!";
+    return;
   }
 
   try {
@@ -364,7 +380,7 @@ function initMap() {
     });
 
     map.on('load', () => {
-      mapDiv.innerHTML = ''; // Clear "Loading map..."
+      mapDiv.innerHTML = ''; // Clear loading text
       mapLoaded = true;
 
       const pulseEl = document.createElement('div');
@@ -379,10 +395,11 @@ function initMap() {
     });
     
     map.on('error', (e) => {
-       mapDiv.textContent = "⚠️ Mapbox Error: Check your token or internet connection.";
+       console.warn("Mapbox Error:", e);
+       mapDiv.innerHTML = "⚠️ <b>Map failed to load.</b><br>Check your internet or Mapbox token.";
     });
   } catch(e) {
-    mapDiv.textContent = "⚠️ Map failed to load.";
+    mapDiv.innerHTML = "⚠️ <b>Map crashed on startup.</b>";
   }
 }
 
@@ -414,10 +431,34 @@ function onHeading(e) {
   if (e.webkitCompassHeading !== undefined && e.webkitCompassHeading !== null) {
     heading = e.webkitCompassHeading;
   } else if (e.alpha !== null) {
+    // Some Android devices return a null alpha until the device is physically moved
     heading = (360 - e.alpha) % 360;
   }
   updateArrow();
 }
+
+// TAP TO RECALIBRATE FUNCTION
+recalibrateBtn.addEventListener('click', () => {
+  statusEl.textContent = "Waiting for sensor... Please wave your phone in a figure-8 motion.";
+  
+  // Force a permission request if on iOS, then wait for events
+  if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+    DeviceOrientationEvent.requestPermission().then(res => {
+      if (res === 'granted') {
+         window.addEventListener('deviceorientationabsolute', onHeading, true);
+         window.addEventListener('deviceorientation', onHeading, true);
+      }
+    });
+  } else {
+    // Android: Often the event listener just needs to be completely reset to fire
+    window.removeEventListener('deviceorientationabsolute', onHeading, true);
+    window.removeEventListener('deviceorientation', onHeading, true);
+    setTimeout(() => {
+      window.addEventListener('deviceorientationabsolute', onHeading, true);
+      window.addEventListener('deviceorientation', onHeading, true);
+    }, 100);
+  }
+});
 
 function generateQR() {
   document.getElementById('qrcode').innerHTML = '';
@@ -439,7 +480,15 @@ directBtn.addEventListener('click', () => {
       currentPos = pos.coords;
       introView.style.display = 'none';
       compassView.classList.add('active');
+      
+      // Initialize map
       initMap();
+      
+      // CRITICAL FIX: The map container was hidden initially, so Mapbox 
+      // couldn't calculate its width/height. We must resize it now that it's visible.
+      setTimeout(() => {
+        if (map) map.resize();
+      }, 200);
 
       watchId = navigator.geolocation.watchPosition(
         onPosition, onError,
